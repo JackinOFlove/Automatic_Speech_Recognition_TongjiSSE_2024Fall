@@ -1,0 +1,2 @@
+# Automatic_Speech_Recognition_TongjiSSE_2024Fall
+2024年秋同济大学计算机科学与技术学院软件工程语音识别作业&amp;项目
