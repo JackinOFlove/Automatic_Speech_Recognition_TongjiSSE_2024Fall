@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>历史记录</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 弹出框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* 没有会议记录时的样式 */
+        .no-meetings {
+            text-align: center;
+            font-size: 18px;
+            color: #555;
+            padding: 20px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .back-button {
+            margin: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            position: absolute;
+            /* absolute positioning */
+            top: 20px;
+            /* 20px from top */
+            left: 20px;
+            /* 20px from left */
+        }
+
+        .back-button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+    </style>
+    <script>
+        async function fetchMeetings() {
+            const response = await fetch('/meetingInfo/getMeetings');
+            const meetings = await response.json();
+            const tableBody = document.getElementById('meetingsTableBody');
+
+            // clear table
+            tableBody.innerHTML = '';
+
+            if (meetings.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="no-meetings">您还没有会议记录，快去使用智能会议助手吧！</td></tr>';
+                return;
+            }
+
+            // fill table
+            meetings.forEach(meeting => {
+                const row = document.createElement('tr');
+                const summaryText = meeting.Summary ? meeting.Summary : '<span style="color: red;">该会议没有记录会议纪要</span>';
+                // use <pre> tag or CSS style to handle line breaks
+                row.innerHTML = `
+                    <td>${meeting.meetingID}</td>
+                    <td>${meeting.meetingTitle}</td>
+                    <td>${new Date(meeting.startTime).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                })}</td>
+                    <td>${new Date(meeting.endTime).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                })}</td>
+                    <td>${meeting.persons}</td>
+                    <td style="white-space: pre-wrap;">${summaryText}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function showSummary(summary) {
+            const modal = document.getElementById("myModal");
+            const modalContent = document.getElementById("modalContent");
+            modalContent.textContent = summary;
+            modal.style.display = "block";
+        }
+
+        function closeModal() {
+            const modal = document.getElementById("myModal");
+            modal.style.display = "none";
+        }
+
+        // get meetings when page loads
+        window.onload = fetchMeetings;
+    </script>
+</head>
+
+<body>
+    <button class="back-button" onclick="location.href='/'">返回主页</button>
+    <h1>您的历史会议记录</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>会议序号</th>
+                <th>会议标题</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+                <th>参会人员</th>
+                <th>会议纪要</th>
+            </tr>
+        </thead>
+        <tbody id="meetingsTableBody">
+            <!-- meetings will be filled here -->
+        </tbody>
+    </table>
+
+    <!-- modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <p id="modalContent"></p>
+        </div>
+    </div>
+</body>
+
+</html>

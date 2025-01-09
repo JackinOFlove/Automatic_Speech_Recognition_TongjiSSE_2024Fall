@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>声通智会</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 0;
+            height: 100vh;
+            background-image: url('../static/background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            /* Add a dark overlay */
+        }
+
+        h1 {
+            font-size: 75px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            color: #2A3335;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        }
+
+        .subtitle {
+            font-size: 36px;
+            margin-bottom: 30px;
+            color: #2A3335;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .icon-button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            background: none;
+            cursor: pointer;
+            border: none;
+            color: #1976d2;
+            border-radius: 8px;
+            transition: transform 0.2s;
+
+        }
+
+        .icon-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .icon-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 220px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #transcript {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #1976d2;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* use modern font */
+
+        }
+    </style>
+</head>
+
+<body>
+    <h1>声&nbsp;&nbsp;通&nbsp;&nbsp;智&nbsp;&nbsp;会<br><span
+            class="subtitle">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;————您的智能会议助手</span>
+    </h1>
+    <div class="button-container">
+        <div class="tooltip">
+            <button class="icon-button" id="recordButton" onclick="startRecording()">
+                <img src="../static/speak.svg" alt="语音输入" style="width: 60px; height: 60px;" class="animated-icon">
+            </button>
+            <span class="tooltiptext">开始语音输入跳转</span>
+        </div>
+        <div id="recordingStatus" style="font-size: 24px; color: red; margin-left: 10px; display: none;">正在录音</div>
+    </div>
+    <style>
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .animated-icon {
+            animation: pulse 1s infinite;
+        }
+    </style>
+    <script>
+        function startRecording() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'zh-CN';
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+
+            document.getElementById('recordButton').classList.add('recognizing');
+            document.getElementById('recordingStatus').style.display = 'block'; //show recording status
+
+            recognition.start();
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[event.resultIndex][0].transcript;
+                console.log('识别结果: ', transcript);
+                document.getElementById('recordingStatus').style.display = 'none'; //hide recording status
+
+                if (transcript.includes('实时记录') || transcript.includes('记录') || transcript.includes('实时')) {
+                    document.getElementById('transcript').innerText = '即将前往智能会议记录...';
+                    setTimeout(() => location.href = '/meetingNote', 2000);
+                } else if (transcript.includes('问题') || transcript.includes('聊天') || transcript.includes('助手') || transcript.includes('智能')) {
+                    document.getElementById('transcript').innerText = '即将前往会议问题助手...';
+                    setTimeout(() => location.href = '/meetingAssistant', 2000);
+                } else if (transcript.includes('历史会议') || transcript.includes('历史') || transcript.includes('查看')) {
+                    document.getElementById('transcript').innerText = '即将前往查看历史记录...';
+                    setTimeout(() => location.href = '/meetingHistory', 2000);
+                }
+            };
+
+            recognition.onerror = function (event) {
+                console.error('录音错误: ', event.error);
+                alert('录音失败，请重试。');
+                document.getElementById('recordingStatus').style.display = 'none'; // show recording status
+            };
+
+            recognition.onend = function () {
+                document.getElementById('recordButton').classList.remove('recognizing');
+                document.getElementById('recordingStatus').style.display = 'none'; // hide recording status
+            };
+        }
+    </script>
+    <div class="button-container">
+        <div class="tooltip">
+            <button class="icon-button"
+                style="background-color: #A2D2DF; color: white; border-radius: 12px; transition: transform 0.2s;"
+                onclick="location.href='/meetingNote'" onmouseover="this.style.transform='scale(1.05)'"
+                onmouseout="this.style.transform='scale(1)'">智能会议记录</button>
+            <span class="tooltiptext">记录会议内容</span>
+        </div>
+        <div class="tooltip">
+            <button class="icon-button"
+                style="background-color: #E4C087; color: white; border-radius: 12px; transition: transform 0.2s;"
+                onclick="location.href='/meetingAssistant'" onmouseover="this.style.transform='scale(1.05)'"
+                onmouseout="this.style.transform='scale(1)'">会议问题助手</button>
+            <span class="tooltiptext">获取会议助手帮助</span>
+        </div>
+        <div class="tooltip">
+            <button class="icon-button"
+                style="background-color: #BC7C7C; color: white; border-radius: 12px; transition: transform 0.2s;"
+                onclick="location.href='/meetingHistory'" onmouseover="this.style.transform='scale(1.05)'"
+                onmouseout="this.style.transform='scale(1)'">查看历史会议</button>
+            <span class="tooltiptext">查看之前的会议记录</span>
+        </div>
+    </div>
+    <div id="transcript">语言识别小助手~</div>
+</body>
+
+</html>

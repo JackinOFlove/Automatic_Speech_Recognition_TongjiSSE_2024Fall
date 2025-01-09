@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+
+    <title>录音实时转写</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* theme color */
+        :root {
+            --primary-color: #1890ff;
+            --danger-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-light: #8c8c8c;
+            --border-color: #e8e8e8;
+            --bg-light: #f8f9fa;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            margin: 70px;
+            max-width: 1200px;
+            /* increase max width */
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .display-container {
+            display: flex;
+            gap: 20px;
+            padding: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            padding: 24px;
+            background-color: white;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* modify button style */
+        .btn {
+            padding: 10px 20px;
+            margin: 0 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-start {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-stop {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-start:hover {
+            background-color: #0052cc;
+            transform: translateY(-1px);
+        }
+
+
+        .btn-stop:hover {
+            background-color: #ff1f1f;
+            transform: translateY(-1px);
+        }
+
+        .btn-setting {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-setting:hover {
+            background-color: #a1a0a0;
+            transform: translateY(-1px);
+        }
+
+        #resultDisplay {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: white;
+        }
+
+
+        /* beautify message display */
+        #resultDisplay>div {
+            padding: 16px;
+            margin-bottom: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0066ff;
+            transition: transform 0.2s ease;
+        }
+
+        #resultDisplay>div:hover {
+            transform: translateX(4px);
+        }
+
+        /* beautify message display */
+        #speakerDisplay>div {
+            padding: 16px;
+            margin-bottom: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0066ff;
+            transition: transform 0.2s ease;
+        }
+
+        #speakerDisplay>div:hover {
+            transform: translateX(4px);
+        }
+
+        /* timestamp style */
+        #resultDisplay span:first-child {
+            display: inline-block;
+            color: #8c8c8c;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        /* message content style */
+        #resultDisplay span:last-child {
+            display: block;
+            color: #262626;
+            margin-top: 4px;
+            line-height: 1.6;
+        }
+
+        /* unified display area style */
+        #resultDisplay,
+        #speakerDisplay {
+            flex: 1;
+            height: 500px;
+            overflow-y: auto;
+            padding: 16px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        /* adjust scrollbar style */
+        #resultDisplay::-webkit-scrollbar,
+        #speakerDisplay::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-track,
+        #speakerDisplay::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-thumb,
+        #speakerDisplay::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-thumb:hover,
+        #speakerDisplay::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+
+        .status-display {
+            text-align: center;
+            padding: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .status-recording {
+            color: var(--primary-color);
+        }
+
+        .status-ended {
+            color: var(--danger-color);
+        }
+
+        /* custom scrollbar */
+        #resultDisplay::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        #resultDisplay::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+
+        /* meeting setting */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            /* remove original fixed percentage padding */
+            justify-content: center;
+            /* horizontal center */
+            align-items: center;
+            /* vertical center */
+            z-index: 1000;
+        }
+
+        /* unified modal style */
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            width: 80%;
+            /* optional: limit max width */
+            max-width: 500px;
+            /* prevent too wide on large screens */
+        }
+
+        .modal-content select,
+        .modal-content input {
+            width: 100%;
+            padding: 8px 12px;
+            margin: 8px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .modal-content button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .start-meeting-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        .start-meeting-btn:hover {
+            background-color: #45a049;
+        }
+
+        .paragraph {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+
+        .speaker-info {
+            color: #0052cc;
+            margin-right: 8px;
+        }
+
+        .timestamp {
+            color: #666;
+        }
+
+        .content {
+            color: #333;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-light);
+            border-radius: 3px;
+        }
+
+        /* unified timestamp and speaker style */
+        .speaker-info,
+        #resultDisplay span:first-child {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        .content,
+        #resultDisplay span:last-child {
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .back-button {
+            margin: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            position: absolute;
+            /* absolute positioning */
+            top: 20px;
+            /* 20px from top */
+            left: 20px;
+            /* 20px from left */
+        }
+
+        .back-button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .speaker-names-container {
+            /* Flexible layout to allow easy arrangement of buttons */
+            display: none;
+
+            /* Add some spacing between buttons */
+            gap: 10px;
+
+            /* Soft padding to give the container some breathing room */
+            padding: 15px;
+
+            /* Light background to distinguish the container */
+            background-color: #f4f4f4;
+
+            /* Subtle rounded corners for a modern look */
+            border-radius: 8px;
+
+            /* Optional: add a gentle shadow for depth */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+            /* Ensure buttons wrap if they don't fit in one line */
+            flex-wrap: wrap;
+
+            /* Center the buttons horizontally */
+            justify-content: center;
+
+            /* Align items vertically in the center */
+            align-items: center;
+        }
+
+        .speaker-names-container input {
+            width: 15%;
+            padding: 6px 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            outline: none;
+            background-color: white;
+        }
+
+        /* 输入框获得焦点时的样式 */
+        .speaker-names-container input:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 0 8px rgba(74, 144, 226, 0.2);
+        }
+
+
+        /* 输入框有内容或获得焦点时标签的样式 */
+        .speaker-names-container input:not(:placeholder-shown)+label,
+        .speaker-names-container input:focus+label {
+            top: -20px;
+            color: #4a90e2;
+            font-size: 12px;
+        }
+
+        /* placeholder style */
+        .speaker-names-container input::placeholder {
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="back-button" onclick="location.href='/'">返回主页</button>
+    <div class="container">
+        <div class="controls">
+            <button id="setting" class="btn btn-setting">设置</button>
+            <button id="recorderStart" class="btn btn-start">开始录音</button>
+            <button id="recorderEnd" class="btn btn-stop">关闭录音</button>
+            <button id="test" class="btn btn-setting">生成说话人分离结果</button>
+            <button id="generate" class="btn btn-setting" onclick="toMeetingHistory()">生成会议纪要</button>
+        </div>
+        <div id="statusDisplay" class="status-display"></div>
+        <div class="display-container">
+            <div id="resultDisplay"></div>
+            <div id="speakerDisplay"></div>
+        </div>
+        <!-- 弹出框 -->
+
+        <div id="meetingModal" class="modal">
+            <div class="modal-content">
+                <span class="close-button" onclick="hideModal()">&times;</span>
+                <h2>会议控制</h2>
+                <div>
+                    <select id="language">
+                        <option value="cn" selected>中文</option>
+                        <option value="en">英文</option>
+                        <option value="yue">粤语</option>
+                        <option value="ja">日语</option>
+                        <option value="ko">韩语</option>
+                        <option value="multilingual">多语言</option>
+                    </select>
+                    <select id="speakerCount">
+                        <option value="2" selected>2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                        <option value="5">5人</option>
+                        <option value="6">6人</option>
+                        <option value="7">7人</option>
+                        <option value="8">8人</option>
+                    </select>
+                    <label for="meetingTitle">会议标题：</label>
+                    <input type="text" id="meetingTitle" placeholder="请输入会议标题" required>
+                </div>
+                <div>
+                    <button onclick="setting()">确认</button>
+                </div>
+            </div>
+        </div>
+        <div id="speakerNamesContainer" class="speaker-names-container">
+
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.baseURL = "http://127.0.0.1:5000/";
+
+        class Word {
+            constructor(id, text, start, end) {
+                this.id = id;
+                this.text = text;
+                this.Start = start;
+                this.End = end;
+            }
+        }
+
+        class Sentence {
+            constructor(text, start, end, index, time, speakerId = "unknown") {
+                this.speakerId = speakerId;
+                this.speakerName = "unknown";
+                this.index = index;
+                this.text = text;
+                this.start = start;
+                this.end = end;
+                this.time = time;
+
+            }
+
+            setSpeakerId(speakerId) {
+                this.speakerId = speakerId;
+            }
+
+            setSpeakerName(speakerName) {
+                this.speakerName = speakerName;
+            }
+
+            getTimeRange() {
+                return {
+                    start: this.start,
+                    end: this.end
+                };
+            }
+
+            toStringSentence() {
+                return `(SpeakerID: ${this.speakerId}),  Time: ${this.time}, Text: "${this.text}"\n`;
+            }
+        }
+
+        class MeetingManager {
+            constructor() {
+                this.meetingId = null;
+                this.wsUrl = null;
+                this.meetingTitle = '会议';
+                this.meetingStartTimeStamp = null;
+                this.meetingEndTimeStamp = null;
+                this.sentenceList = [];
+                this.language = 'cn';
+                this.speakerCount = '0';
+                this.sentenceMap = new Map(); // for storing and quickly finding sentences
+                this.indexMap = new Map();
+
+            }
+
+            async fetchMeetingInfo() {
+                console.log(typeof +this.speakerCount)
+                return await axios.post('/api/meeting/initMeetingInfo',
+                    {
+                        language: this.language,
+                        speakerCount: parseInt(this.speakerCount),
+                        meetingTitle: this.meetingTitle
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                )
+                    .then(response => {
+                        this.meetingId = response.data.meetingId;
+                        this.wsUrl = response.data.wsUrl;
+                    })
+                    .catch(error => {
+                        console.error('错误:', error);
+                    });
+            }
+
+            async saveMeetingInfo() {
+                const speakerNames = [];
+                for (let i = 1; i <= parseInt(document.getElementById('speakerCount').value); i++) {
+                    const speakerName = document.getElementById(`speakerName${i}`).value;
+                    speakerNames.push(speakerName);
+                }
+                console.log(this.meetingStartTimeStamp, this.meetingEndTimeStamp)
+                console.log(speakerNames)
+                console.log(this.meetingTitle)
+                return await axios.post('/meetingInfo/saveHalfMeeting', {
+                    //meetingID: this.meetingId,
+                    meetingTitle: this.meetingTitle,
+                    startTime: new Date(this.meetingStartTimeStamp).toISOString(),
+                    endTime: new Date(this.meetingEndTimeStamp).toISOString(),
+                    persons: speakerNames.join(', ')
+                })
+                    .then(response => {
+                        console.log(response.data);
+                        alert('会议信息已保存');
+                    })
+                    .catch(error => {
+                        console.error('错误:', error);
+                    });
+            }
+
+
+            getWsUrl() {
+                return this.wsUrl;
+            }
+
+            getMeetingId() {
+                return this.meetingId;
+            }
+
+            setMeetingStartTimeStamp() {
+                this.meetingStartTimeStamp = new Date().getTime();
+            }
+
+            setMeetingEndTimeStamp() {
+                this.meetingEndTimeStamp = new Date().getTime();
+            }
+
+            setMeetingTitle(title) {
+                this.meetingTitle = title;
+            }
+
+            setLanguage(language) {
+                this.language = language;
+            }
+
+            setSpeakerCount(speakerCount) {
+                this.speakerCount = speakerCount;
+            }
+
+            addSentence(sentence) {
+                this.sentenceList.push(sentence);
+            }
+
+            clearSentenceList() {
+                this.sentenceList = [];
+            }
+
+            toStringSentenceList() {
+                var totalString = "";
+                this.sentenceList.forEach(i => {
+                    totalString += i.toStringSentence();
+                });
+                return totalString;
+            }
+
+            // find sentence by index
+            findSentenceByIndex(index) {
+                return this.indexMap.get(index);
+            }
+
+            // get title
+            getMeetingTitle() {
+                return this.meetingTitle;
+            }
+
+            // 插入新的句子
+            insertSentence(sentence) {
+                const resultDisplay = document.getElementById('resultDisplay');
+                const sentenceContainer = document.createElement('div');
+                sentenceContainer.setAttribute('data-start-time', sentence.start);
+                sentenceContainer.setAttribute('data-end-time', sentence.end);
+                sentenceContainer.className = 'paragraph';
+                // create timestamp element
+                const timestamp = document.createElement('span');
+                const currentTime = new Date().toLocaleTimeString('zh-CN');
+                timestamp.textContent = `[${currentTime}] `;
+                timestamp.className = 'timestamp';
+
+                // create message content element
+                const sentenceContent = document.createElement('span');
+                sentenceContent.textContent = sentence.text;
+
+                // create speaker element (initially empty)
+                const speakerInfo = document.createElement('span');
+                speakerInfo.className = 'speaker-info';
+
+
+                // assemble elements
+                sentenceContainer.appendChild(timestamp);
+                sentenceContainer.appendChild(speakerInfo);
+                sentenceContainer.appendChild(sentenceContent);
+
+                // add to display area
+                resultDisplay.appendChild(sentenceContainer);
+                resultDisplay.scrollTop = resultDisplay.scrollHeight;
+
+                // store sentence info for later update
+                this.sentenceMap.set(`${sentence.start}-${sentence.end}`, {
+                    container: sentenceContainer,
+                    sentence: sentence
+                });
+
+                this.indexMap.set(sentence.index, {
+                    container: sentenceContainer,
+                    sentence: sentence
+                });
+            }
+
+            // update existing sentence
+            updateSentence(beginTime, endTime, speakerId, speakerName) {
+                const key = `${beginTime}-${endTime}`;
+                const sentenceData = this.sentenceMap.get(key);
+
+                if (sentenceData) {
+                    // update data model
+                    sentenceData.sentence.setSpeakerId(speakerId);
+                    sentenceData.sentence.setSpeakerName(speakerName);
+
+                    // update UI
+                    const speakerInfo = sentenceData.container.querySelector('.speaker-info');
+                    speakerInfo.textContent = `[${speakerName}] `;
+
+                    // add fade-in animation
+                    speakerInfo.style.animation = 'fadeIn 0.5s ease-in';
+                }
+            }
+
+            // update sentence content by index
+            updateSentenceContentByIndex(index, newText) {
+                const sentenceData = this.indexMap.get(index);
+                if (sentenceData) {
+                    if (newText === "") {
+                        return;
+                    }
+                    // update data model
+                    sentenceData.sentence.text = newText;
+
+                    // update UI
+                    const sentenceContent = sentenceData.container.querySelector('span:last-child');
+                    sentenceContent.textContent = newText;
+                }
+            }
+        }
+
+        var meetingManager = new MeetingManager();
+
+        var globalRecorder = null; // audio recorder
+
+        var ws = null;
+
+        function connectWebSocket() {
+            //console.log(meetingManager.getWsUrl())
+            ws = new WebSocket(meetingManager.getWsUrl()); // WSS link is the MeetingJoinUrl returned after creating a real-time recording and successfully obtaining a push stream address.
+            ws.binaryType = "arraybuffer"; // data is ArrayBuffer type
+            ws.onopen = function () {
+                if (ws.readyState == 1) {
+                    globalRecorder.start();
+                }
+                const params = {
+                    header: {
+                        name: "StartTranscription",
+                        namespace: "SpeechTranscriber",
+                    },
+                    payload: {
+                        format: "pcm", // example is pcm format, you can choose format as needed. Note that if it is not pcm format, the encodePCM method in the sample cannot be used, and you need to implement data format conversion yourself.
+                    },
+                };
+                ws.send(JSON.stringify(params));
+            };
+
+            ws.onmessage = function (msg) {
+                const dataJson = JSON.parse(msg.data);
+                const header = dataJson.header;
+                const payload = dataJson.payload;
+                console.log(dataJson);
+                switch (header.name) {
+                    case "TaskFailed":
+                        const failedStatus = document.getElementById('statusDisplay');
+                        failedStatus.textContent = "会议启动失败。";
+                        failedStatus.classList.add('status-ended');
+                        break;
+
+                    case "TranscriptionStarted":
+                        const startedStatus = document.getElementById('statusDisplay');
+                        startedStatus.textContent = "会议记录中...";
+                        startedStatus.classList.add('status-recording');
+                        return;
+
+                    case "TranscriptionResultChanged":
+                        meetingManager.updateSentenceContentByIndex(payload.index, payload.result);
+                        break;
+                    case "SentenceBegin":
+                        let sentence = new Sentence(payload.result, payload.begin_time, payload.time, payload.index);
+                        meetingManager.insertSentence(sentence);
+                        return;
+
+                    case "SentenceEnd":
+                        if (payload.result !== "") {
+                            //let sentence = new Sentence(payload.result, payload.begin_time, payload.time, payload.index);
+                            //meetingManager.addSentence(sentence);
+                            //meetingManager.insertSentence(sentence);
+                        }
+                        break;
+
+                    case "TranscriptionCompleted":
+                        const completedStatus = document.getElementById('statusDisplay');
+                        completedStatus.textContent = "会议已结束。";
+                        completedStatus.className = 'status-display status-ended';
+                        return;
+                }
+            }
+
+
+            ws.onerror = function (err) {
+                console.info(err);
+            };
+        }
+
+        // audio recorder configuration/data processing
+        var Recorder = function (stream) {
+            var context = new (window.AudioContext || window.webkitAudioContext)();
+            var audioInput = context.createMediaStreamSource(stream);
+            var recorder = context.createScriptProcessor(4096, 1, 1);
+            var audioData = {
+                size: 0, // audio file length
+                buffer: [], // audio buffer
+                inputSampleRate: 48000, // input sample rate; usually default browser sampling rate
+                inputSampleBits: 16, // input sample bits
+                outputSampleRate: 16000, // output sample rate
+                oututSampleBits: 16, // output sample bits
+                clear: function () {
+                    this.buffer = [];
+                    this.size = 0;
+                },
+                input: function (data) {
+                    this.buffer.push(new Float32Array(data));
+                    this.size += data.length;
+                },
+                compress: function () {
+                    // merge and compress data
+                    var data = new Float32Array(this.size);
+                    var offset = 0;
+                    for (var i = 0; i < this.buffer.length; i++) {
+                        data.set(this.buffer[i], offset);
+                        offset += this.buffer[i].length;
+                    }
+
+                    var compression = parseInt(
+                        this.inputSampleRate / this.outputSampleRate
+                    );
+                    var length = data.length / compression;
+                    var result = new Float32Array(length);
+                    var index = 0,
+                        j = 0;
+                    while (index < length) {
+                        result[index] = data[j];
+                        j += compression;
+                        index++;
+                    }
+                    return result;
+                },
+                encodePCM: function () {
+                    var sampleRate = Math.min(
+                        this.inputSampleRate,
+                        this.outputSampleRate
+                    );
+                    var sampleBits = Math.min(this.inputSampleBits, this.oututSampleBits);
+                    var bytes = this.compress();
+                    var dataLength = bytes.length * (sampleBits / 8);
+                    var buffer = new ArrayBuffer(dataLength);
+                    var data = new DataView(buffer);
+                    var offset = 0;
+                    for (var i = 0; i < bytes.length; i++, offset += 2) {
+                        var s = Math.max(-1, Math.min(1, bytes[i]));
+                        data.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+                    }
+                    return new Blob([data]);
+                },
+            };
+
+            var sendAudioData = function () {
+                // process data in chunks
+                var reader = new FileReader();
+                reader.onload = (e) => {
+                    var outbuffer = e.target.result;
+                    var arr = new Int8Array(outbuffer);
+                    if (arr.length > 0) {
+                        var tmparr = new Int8Array(1024);
+                        var j = 0;
+                        for (var i = 0; i < arr.byteLength; i++) {
+                            tmparr[j++] = arr[i];
+                            if ((i + 1) % 1024 == 0) {
+                                ws.send(tmparr);
+                                if (arr.byteLength - i - 1 >= 1024) {
+                                    tmparr = new Int8Array(1024);
+                                } else {
+                                    tmparr = new Int8Array(arr.byteLength - i - 1);
+                                }
+                                j = 0;
+                            }
+                            if (i + 1 == arr.byteLength && (i + 1) % 1024 != 0) {
+                                ws.send(tmparr);
+                            }
+                        }
+                    }
+                };
+                reader.readAsArrayBuffer(audioData.encodePCM());
+                audioData.clear();
+            };
+
+            this.start = function () {
+                audioInput.connect(recorder);
+                recorder.connect(context.destination);
+            };
+
+            this.stop = function () {
+                recorder.disconnect();
+            };
+
+            this.clear = function () {
+                audioData.clear();
+            };
+
+            recorder.onaudioprocess = function (e) {
+                var inputBuffer = e.inputBuffer.getChannelData(0);
+                audioData.input(inputBuffer);
+                sendAudioData();
+            };
+        };
+
+        /*
+         * start recording
+         */
+        document.getElementById("recorderStart").onclick = async function () {
+            // disable start button
+            document.getElementById("recorderStart").disabled = true;
+            // enable end button
+            document.getElementById("recorderEnd").disabled = false;
+
+            const statusDisplay = document.getElementById('statusDisplay');
+            statusDisplay.textContent = "会议启动中...";
+            statusDisplay.className = 'status-display';
+
+            await meetingManager.fetchMeetingInfo();
+            meetingManager.setMeetingStartTimeStamp();
+
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+            if (!navigator.getUserMedia) {
+                console.log("浏览器不支持音频输入");
+            } else {
+                navigator.getUserMedia(
+                    {
+                        audio: true,
+                    },
+                    (stream) => {
+                        globalRecorder = new Recorder(stream);
+                        console.log("开始录音");
+                        connectWebSocket();
+                    },
+                    (error) => {
+                        console.log(error);
+                        document.getElementById("recorderStart").disabled = false;
+                    }
+                );
+            }
+        };
+
+        /**
+         * stop recording
+         */
+        document.getElementById("recorderEnd").onclick = function () {
+            if (ws) {
+                // enable start button
+                document.getElementById("recorderStart").disabled = false;
+                // disable end button
+                document.getElementById("recorderEnd").disabled = true;
+
+                loadMeetingRecord();
+                meetingManager.setMeetingEndTimeStamp();
+                const params = {
+                    header: {
+                        name: "StopTranscription",
+                        namespace: "SpeechTranscriber",
+                    },
+                    payload: {},
+                };
+                ws.send(JSON.stringify(params));
+                setTimeout(() => {
+                    ws.close();
+                }, 10000);
+                globalRecorder.stop();
+
+                //meetingManager.saveMeetingInfo();
+
+            }
+        };
+
+        document.getElementById("setting").onclick = function () {
+            document.getElementById('meetingModal').style.display = 'flex';
+        }
+
+        /**
+         * hide setting box
+         */
+        function hideModal() {
+            document.getElementById('meetingModal').style.display = 'none';
+        }
+
+        window.onclick = function (event) {
+            let modal = document.getElementById('meetingModal');
+            if (event.target == modal) {
+                hideModal();
+            }
+        }
+
+        // set initial state when page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById("recorderEnd").disabled = true;
+        });
+
+        /**
+         * confirm setting
+         */
+        function setting() {
+            const language = document.getElementById('language').value;
+            const speakerCount = document.getElementById('speakerCount').value === '2' ? '2' : '0';
+            const meetingTitle = document.getElementById('meetingTitle').value;
+            console.log(typeof speakerCount);
+            meetingManager.setLanguage(language);
+            meetingManager.setSpeakerCount(speakerCount);
+            meetingManager.setMeetingTitle(meetingTitle);
+            hideModal();
+            displaySpeakerInputs(parseInt(document.getElementById('speakerCount').value));
+        }
+
+        function displaySpeakerInputs(speakerCount) {
+            const container = document.getElementById('speakerNamesContainer');
+            container.style.display = "flex";
+
+            container.innerHTML = '';
+            for (let i = 1; i <= speakerCount; i++) {
+                const label = document.createElement('label');
+                label.textContent = `说话人${i}：`;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `speakerName${i}`;
+                input.placeholder = `请输入说话人${i}的姓名`;
+                container.appendChild(label);
+                container.appendChild(input);
+            }
+
+            const saveBtn = document.createElement('button');
+            saveBtn.id = "saveMeetingInfo";
+            saveBtn.classList.add('btn');
+            saveBtn.classList.add('btn-setting');
+            saveBtn.innerText = "保存";
+            saveBtn.onclick = async function () {
+                meetingManager.setMeetingEndTimeStamp();
+                await meetingManager.saveMeetingInfo();
+            };
+            container.appendChild(saveBtn);
+            //document.getElementById('saveMeetingInfo').style.display = 'block';
+        }
+
+        function onSpeakerIdentified(beginTime, endTime, speakerId, speakerName) {
+            meetingManager.updateSentence(beginTime, endTime, speakerId, speakerName);
+        }
+
+        async function loadMeetingRecord() {
+            let url = ""
+            // API call
+            await axios.get(`/api/meeting/${meetingManager.getMeetingId()}/record`)
+                .then(response => {
+                    console.log(response.data);
+                    url = response.data.transcription_url;
+                })
+                .catch(error => {
+                    console.error('错误:', error);
+                });
+            loadSpeaker(url)
+
+        }
+
+        async function loadSpeaker(url) {
+            //console.log(meetingManager.sentenceMap);
+            await axios.get(url)
+                .then(response => {
+                    //console.log(response.data);
+                    //const audioSegments = response.data.Transcription.AudioSegments;
+                    //console.log(typeof audioSegments)
+                    //audioSegments.forEach((segment, index) => {
+                    //    const startTime = segment[0];
+                    //    const endTime = segment[1];
+                    //    console.log(`Segment ${index}: Start = ${startTime}, End = ${endTime}`);
+                    //    //onSpeakerIdentified()
+                    //});
+                    insertSpeakerMessage(response.data, meetingManager.meetingStartTimeStamp);
+                }
+                )
+                .catch(error => {
+                    console.error('错误:', error);
+                })
+        }
+
+        document.getElementById("test").onclick = function () {
+            loadMeetingRecord();
+        };
+
+        function insertSpeakerMessage(transcriptionData, meetingStartTime) {
+            // get display container
+            const displayDiv = document.getElementById('speakerDisplay');
+
+            // clear previous content
+            meetingManager.clearSentenceList();
+            displayDiv.innerHTML = '';
+            // iterate over all paragraphs
+            transcriptionData.Transcription.Paragraphs.forEach(paragraph => {
+                // create paragraph container
+                const paragraphDiv = document.createElement('div');
+                paragraphDiv.className = 'paragraph';
+
+                // calculate actual time
+                const startTimeMs = meetingStartTime + paragraph.Words[0].Start;
+                const currentTime = new Date(startTimeMs).toLocaleTimeString('zh-CN');
+
+                // create timestamp element
+                const timestamp = document.createElement('span');
+                timestamp.textContent = `[${currentTime}] `;
+                timestamp.className = 'timestamp';
+                // create speaker info
+                const speakerInfo = document.createElement('span');
+                speakerInfo.className = 'speaker-info';
+                speakerInfo.innerHTML = `说话人${paragraph.SpeakerId}: `;
+
+                // connect all words
+                const content = document.createElement('span');
+                content.className = 'content';
+                content.textContent = paragraph.Words.map(word => word.Text).join('');
+                var sentence = new Sentence(content.textContent, null, null, null, currentTime, paragraph.SpeakerId);
+                meetingManager.addSentence(sentence);
+                // assemble paragraph
+                paragraphDiv.appendChild(timestamp);
+                paragraphDiv.appendChild(speakerInfo);
+                paragraphDiv.appendChild(content);
+
+                // add to display container
+                displayDiv.appendChild(paragraphDiv);
+            });
+        }
+
+        function toMeetingHistory() {
+            // the logic you want to execute when the button is clicked
+            console.log("跳转到会议历史页面");
+            //const content="从这段话中可以理解到，说话者（SpeakerID: 1）在讨论某个情境下需要支付一定的费用，并建议直接在当前页面上进行说明，而不是去细分和分析受害人的结果。说话者认为这种做法是合理的。如果需要进一步的帮助或对这段对话的解释，请告诉我更多的背景信息或者具体的问题。";
+            const content = meetingManager.toStringSentenceList();
+            //const content = document.getElementById('speakerDisplay').innerText;
+            const meetingTitle = meetingManager.getMeetingTitle();
+
+            localStorage.setItem('meetingText', content);
+            localStorage.setItem("title", meetingTitle);
+
+            window.location.href = '/meetingAssistant';
+        }
+
+
+    </script>
+</body>
+
+</html>
